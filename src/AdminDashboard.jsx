@@ -1,674 +1,355 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Activity,
-  RefreshCw,
-  CalendarDays,
-  FlaskConical,
-  ClipboardList,
-  UserCheck,
-  Users,
-  ChevronRight,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Stethoscope,
-  PlusCircle,
-  ShieldAlert,
-  Syringe,
-  FileText,
-  UserPlus,
-  Zap,
-  Circle,
-  TrendingUp,
-  BadgeCheck,
+  Users, RefreshCw, UserCheck, ClipboardList,
+  Activity, ChevronRight, AlertTriangle, CheckCircle2,
+  Stethoscope, PlusCircle, FileText, Search, X
 } from "lucide-react";
+import { supabase } from "./superbase";
 
-// ─── Seed Data ────────────────────────────────────────────────────────────────
-const INITIAL_PATIENTS = [
-  {
-    id: "JC-P-26-8941",
-    name: "Ramesh Damodar Kulkarni",
-    age: 61,
-    phone: "+91 98201 33847",
-    diagnosis: "Stage III Adenocarcinoma — Protocol FOLFOX",
-    doctor: "Dr. Suresh Mehta",
-    riskTier: "High",
-    status: "Pending Doc",
-    createdAt: "Jun 23, 2026",
-    notes: "Post-surgical patient — port-a-cath fitted June 12",
-  },
-  {
-    id: "JC-P-26-7762",
-    name: "Priya Ananthakrishnan",
-    age: 47,
-    phone: "+91 91234 56789",
-    diagnosis: "Stage II Invasive Ductal Carcinoma — Protocol AC-T",
-    doctor: "Dr. Nandini Joshi",
-    riskTier: "Medium",
-    status: "Ready to Match",
-    createdAt: "Jun 24, 2026",
-    notes: "Cycle 3 of 8 — tolerating well, mild nausea reported",
-  },
-  {
-    id: "JC-P-26-6530",
-    name: "Mohanlal Bhimsen Tiwari",
-    age: 69,
-    phone: "+91 77334 19902",
-    diagnosis: "Stage IV Colorectal Carcinoma — Protocol XELOX",
-    doctor: "Dr. Arvind Rao",
-    riskTier: "Critical",
-    status: "In Session",
-    createdAt: "Jun 25, 2026",
-    notes: "Active home session — Nurse Kavitha assigned, ETA completion 14:40",
-  },
-  {
-    id: "JC-P-26-5811",
-    name: "Sunita Vijaykumar Desai",
-    age: 54,
-    phone: "+91 98765 43210",
-    diagnosis: "Stage II Cervical Carcinoma — Protocol Carboplatin/Paclitaxel",
-    doctor: "Dr. Suresh Mehta",
-    riskTier: "Medium",
-    status: "Pending Doc",
-    createdAt: "Jun 25, 2026",
-    notes: "Awaiting signed treatment authorisation from oncologist",
-  },
-];
-
-const DOCTORS = [
-  "Dr. Suresh Mehta",
-  "Dr. Nandini Joshi",
-  "Dr. Arvind Rao",
-  "Dr. Preethi Srinivasan",
-  "Dr. Rajan Pillai",
-];
-
-const STATUS_CONFIG = {
-  "Pending Doc": {
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    border: "border-amber-200",
-    dot: "bg-amber-400",
-  },
-  "Ready to Match": {
-    bg: "bg-teal-50",
-    text: "text-teal-700",
-    border: "border-teal-200",
-    dot: "bg-teal-400",
-  },
-  "In Session": {
-    bg: "bg-emerald-50",
-    text: "text-emerald-700",
-    border: "border-emerald-200",
-    dot: "bg-emerald-400",
-    pulse: true,
-  },
-  Committed: {
-    bg: "bg-slate-50",
-    text: "text-slate-600",
-    border: "border-slate-200",
-    dot: "bg-slate-400",
-  },
+const CONSENT_COLORS = {
+  Pending: { bg: "bg-yellow-100", text: "text-yellow-700" },
+  Signed: { bg: "bg-green-100", text: "text-green-700" },
+  Expired: { bg: "bg-red-100", text: "text-red-700" },
 };
 
-const RISK_CONFIG = {
-  Critical: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200" },
-  High: { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200" },
-  Medium: { bg: "bg-sky-50", text: "text-sky-700", border: "border-sky-200" },
-  Low: { bg: "bg-slate-50", text: "text-slate-500", border: "border-slate-200" },
+const RISK_COLORS = {
+  Critical: { bg: "bg-red-100", text: "text-red-700" },
+  High: { bg: "bg-orange-100", text: "text-orange-700" },
+  Medium: { bg: "bg-blue-100", text: "text-blue-700" },
+  Low: { bg: "bg-gray-100", text: "text-gray-600" },
 };
 
-// ─── Sub-Components ────────────────────────────────────────────────────────────
-
-function StatusPill({ status }) {
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG["Committed"];
+function Badge({ label, colorMap }) {
+  const cfg = colorMap[label] || { bg: "bg-gray-100", text: "text-gray-600" };
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${cfg.bg} ${cfg.text} ${cfg.border}`}
-    >
-      <span
-        className={`w-1.5 h-1.5 rounded-full ${cfg.dot} ${cfg.pulse ? "animate-pulse" : ""}`}
-      />
-      {status}
+    <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${cfg.bg} ${cfg.text}`}>
+      {label}
     </span>
   );
 }
 
-function RiskPill({ tier }) {
-  const cfg = RISK_CONFIG[tier] || RISK_CONFIG["Low"];
+function StatCard({ icon: Icon, label, value, color }) {
   return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase border ${cfg.bg} ${cfg.text} ${cfg.border}`}
-    >
-      {tier}
-    </span>
-  );
-}
-
-function MetricCard({ icon: Icon, label, value, sub, accentClass, borderClass, trend }) {
-  return (
-    <div
-      className={`bg-white rounded-xl border ${borderClass} p-4 flex flex-col gap-2 shadow-sm relative overflow-hidden`}
-    >
-      <div className="flex items-start justify-between">
-        <div className={`p-2 rounded-lg ${accentClass}`}>
-          <Icon size={16} className="opacity-80" />
-        </div>
-        {trend !== undefined && (
-          <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded-full">
-            <TrendingUp size={9} />
-            {trend}
-          </span>
-        )}
+    <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4">
+      <div className={`p-3 rounded-lg ${color}`}>
+        <Icon size={20} className="text-white" />
       </div>
       <div>
-        <p className="text-3xl font-bold text-slate-800 leading-none tracking-tight">{value}</p>
-        <p className="text-[11px] text-slate-500 mt-1 font-medium leading-snug">{label}</p>
+        <p className="text-2xl font-bold text-gray-800">{value}</p>
+        <p className="text-sm text-gray-500">{label}</p>
       </div>
-      <p className="text-[10px] text-slate-400 font-mono">{sub}</p>
     </div>
   );
 }
 
-// ─── Main Component ────────────────────────────────────────────────────────────
-
 export default function AdminDashboard() {
-  // ── Ledger State
-  const [patientLedger, setPatientLedger] = useState(INITIAL_PATIENTS);
+  const [patients, setPatients] = useState([]);
+  const [doctors, setDoctors] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
-
-  // ── DB Sync State
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [lastSynced, setLastSynced] = useState("Just now");
-  const syncTimerRef = useRef(null);
-
-  // ── Triage Counter (tracks 'Pending Doc' status count)
-  const triageCount = patientLedger.filter((p) => p.status === "Pending Doc").length;
-  const readyCount = patientLedger.filter((p) => p.status === "Ready to Match").length;
-  const inSessionCount = patientLedger.filter((p) => p.status === "In Session").length;
-
-  // ── Intake Form State
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [stats, setStats] = useState({ sessions: 0, pending: 0, ready: 0, nurses: 0 });
   const [form, setForm] = useState({
-    name: "",
-    age: "",
-    phone: "",
-    diagnosis: "",
-    doctor: "",
-    riskTier: "Medium",
-    notes: "",
+    name: "", age: "", phone: "", address: "",
+    diagnosis: "", cancer_type: "", doctor_id: "", riskTier: "Medium", notes: "",
   });
   const [formError, setFormError] = useState("");
-  const [commitSuccess, setCommitSuccess] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  // ── Handlers
-  const handleSync = () => {
-    if (isSyncing) return;
-    setIsSyncing(true);
-    clearTimeout(syncTimerRef.current);
-    syncTimerRef.current = setTimeout(() => {
-      setIsSyncing(false);
-      setLastSynced("Just now");
-    }, 2200);
-  };
+  async function fetchAll() {
+    const [pats, docs, sessions, pending, ready, nurses] = await Promise.all([
+      supabase.from("patients").select(`id, patient_code, name, age, diagnosis, consent_status, created_at, feedback, high_risk_flags, doctors(name)`).order("created_at", { ascending: false }),
+      supabase.from("doctors").select("id, name, specialization"),
+      supabase.from("visits").select("id", { count: "exact", head: true }).eq("status", "InProgress"),
+      supabase.from("patients").select("id", { count: "exact", head: true }).eq("consent_status", "Pending"),
+      supabase.from("care_requests").select("id", { count: "exact", head: true }).eq("status", "DoctorApproved"),
+      supabase.from("nurses").select("id", { count: "exact", head: true }).eq("availability_status", "Available"),
+    ]);
+    setPatients(pats.data || []);
+    setDoctors(docs.data || []);
+    setStats({ sessions: sessions.count || 0, pending: pending.count || 0, ready: ready.count || 0, nurses: nurses.count || 0 });
+  }
 
   useEffect(() => {
-    return () => clearTimeout(syncTimerRef.current);
+    setLoading(true);
+    fetchAll().finally(() => setLoading(false));
   }, []);
 
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+  const handleSync = async () => {
+    setSyncing(true);
+    await fetchAll();
+    setSyncing(false);
+  };
+
+  const handleChange = (e) => {
+    setForm(p => ({ ...p, [e.target.name]: e.target.value }));
     setFormError("");
   };
 
-  const handleCommit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name.trim()) { setFormError("Patient full legal name is required."); return; }
-    if (!form.age || isNaN(Number(form.age)) || Number(form.age) < 1 || Number(form.age) > 120) {
-      setFormError("Please enter a valid age between 1 and 120."); return;
-    }
-    if (!form.phone.trim()) { setFormError("Primary phone number is required."); return; }
-    if (!form.diagnosis.trim()) { setFormError("Oncology classification / clinical notes are required."); return; }
-    if (!form.doctor) { setFormError("Please assign a treating doctor."); return; }
+    if (!form.name.trim()) return setFormError("Patient name is required.");
+    if (!form.age || isNaN(form.age) || +form.age < 1 || +form.age > 120) return setFormError("Enter a valid age.");
+    if (!form.phone.trim()) return setFormError("Phone number is required.");
+    if (!form.address.trim()) return setFormError("Address is required.");
+    if (!form.diagnosis.trim()) return setFormError("Diagnosis is required.");
+    if (!form.doctor_id) return setFormError("Please select a doctor.");
 
-    const seq = Math.floor(1000 + Math.random() * 8999);
-    const newPatient = {
-      id: `JC-P-26-${seq}`,
+    setSubmitting(true);
+    const { error } = await supabase.from("patients").insert({
       name: form.name.trim(),
-      age: Number(form.age),
+      age: +form.age,
       phone: form.phone.trim(),
+      address: form.address.trim(),
       diagnosis: form.diagnosis.trim(),
-      doctor: form.doctor,
-      riskTier: form.riskTier,
-      status: "Pending Doc",
-      createdAt: "Jun 25, 2026",
-      notes: form.notes.trim() || "No additional notes.",
-    };
+      cancer_type: form.cancer_type.trim() || null,
+      primary_doctor_id: form.doctor_id,
+      high_risk_flags: [form.riskTier],
+      feedback: form.notes.trim() || null,
+      consent_status: "Pending",
+    });
+    setSubmitting(false);
 
-    setPatientLedger((prev) => [newPatient, ...prev]);
-    setForm({ name: "", age: "", phone: "", diagnosis: "", doctor: "", riskTier: "Medium", notes: "" });
-    setFormError("");
-    setCommitSuccess(true);
-    setTimeout(() => setCommitSuccess(false), 3000);
+    if (error) return setFormError("Failed to save: " + error.message);
+
+    setForm({ name: "", age: "", phone: "", address: "", diagnosis: "", cancer_type: "", doctor_id: "", riskTier: "Medium", notes: "" });
+    setSuccess(true);
+    setTimeout(() => setSuccess(false), 3000);
+    await fetchAll();
   };
 
-  // ─── Render ──────────────────────────────────────────────────────────────────
+  const filtered = patients.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    (p.patient_code || "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
   return (
-    <div className="w-screen h-screen overflow-hidden bg-slate-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
 
-      {/* ══ ZONE 1: HEADER ══════════════════════════════════════════════════════ */}
-      <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-20 shadow-sm">
-        {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-teal-600 shadow-sm">
-            <Syringe size={18} className="text-white" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-slate-800 font-extrabold text-[15px] tracking-widest uppercase leading-none">
-                Jarurat Care
-              </span>
-              <span className="text-[9px] font-bold bg-teal-600 text-white px-1.5 py-0.5 rounded tracking-widest uppercase leading-none">
-                Admin
-              </span>
-            </div>
-            <p className="text-[10px] text-slate-400 font-mono mt-0.5 leading-none tracking-wide">
-              Command Deck v3.2 · Oncology Home-Care Logistics
-            </p>
-          </div>
+      {/* HEADER */}
+      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">JaruratCare</h1>
+          <p className="text-sm text-gray-500">{today}</p>
         </div>
-
-        {/* Right Controls */}
-        <div className="flex items-center gap-4">
-          {/* Sync indicator */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-400 font-mono">
-              {isSyncing ? "Syncing…" : `Last sync: ${lastSynced}`}
-            </span>
-            <button
-              onClick={handleSync}
-              disabled={isSyncing}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                isSyncing
-                  ? "bg-teal-50 border-teal-200 text-teal-600 cursor-not-allowed"
-                  : "bg-white border-slate-200 text-slate-600 hover:bg-teal-50 hover:border-teal-300 hover:text-teal-700 active:scale-95 cursor-pointer"
-              }`}
-            >
-              <RefreshCw
-                size={12}
-                className={isSyncing ? "animate-spin text-teal-500" : "text-slate-400"}
-              />
-              <span className="flex items-center gap-1">
-                <Circle
-                  size={6}
-                  className={`${isSyncing ? "fill-amber-400 text-amber-400 animate-pulse" : "fill-emerald-400 text-emerald-400"}`}
-                />
-                Live DB Sync
-              </span>
-            </button>
-          </div>
-
-          {/* Date */}
-          <div className="flex items-center gap-2 border border-slate-200 bg-slate-50 px-3 py-1.5 rounded-lg">
-            <CalendarDays size={13} className="text-teal-600" />
-            <span className="text-xs font-semibold text-slate-700 font-mono">June 25, 2026</span>
-          </div>
-
-          {/* Admin Avatar */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">AD</span>
-            </div>
-            <div className="leading-none">
-              <p className="text-xs font-semibold text-slate-700">Admin</p>
-              <p className="text-[10px] text-slate-400">Operations</p>
-            </div>
-          </div>
+        <div className="flex items-center gap-3">
+          <button onClick={handleSync} disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition">
+            <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+            {syncing ? "Syncing..." : "Sync"}
+          </button>
+          <div className="w-9 h-9 rounded-full bg-teal-600 flex items-center justify-center text-white text-sm font-bold">A</div>
         </div>
       </header>
 
-      {/* ══ ZONE 2: ANALYTICS STRIP ═════════════════════════════════════════════ */}
-      <div className="px-6 pt-4 pb-3 shrink-0">
+      <div className="flex-1 p-6 flex flex-col gap-6">
+
+        {/* STATS */}
         <div className="grid grid-cols-4 gap-4">
-          <MetricCard
-            icon={Activity}
-            label="Active In-Field Chemo Sessions"
-            value={inSessionCount}
-            sub="visits.status = 'InProgress'"
-            accentClass="bg-emerald-100 text-emerald-600"
-            borderClass="border-emerald-200"
-            trend="+1 today"
-          />
-          <MetricCard
-            icon={ClipboardList}
-            label="Doctor Sign-off Auth Triage Queue"
-            value={triageCount}
-            sub="care_requests.status = 'Draft'"
-            accentClass="bg-amber-100 text-amber-600"
-            borderClass="border-amber-200"
-          />
-          <MetricCard
-            icon={BadgeCheck}
-            label="Unassigned Booking Capacity Intake"
-            value={readyCount}
-            sub="care_requests.status = 'DoctorApproved'"
-            accentClass="bg-teal-100 text-teal-600"
-            borderClass="border-teal-200"
-          />
-          <MetricCard
-            icon={UserCheck}
-            label="Active Standby Clinician Capacity"
-            value={14}
-            sub="nurses.availability_status = 'Available'"
-            accentClass="bg-sky-100 text-sky-600"
-            borderClass="border-sky-200"
-            trend="3 zones"
-          />
+          <StatCard icon={Activity} label="Active Sessions" value={stats.sessions} color="bg-emerald-500" />
+          <StatCard icon={ClipboardList} label="Pending Doctor Sign-off" value={stats.pending} color="bg-amber-500" />
+          <StatCard icon={Users} label="Ready to Assign" value={stats.ready} color="bg-teal-500" />
+          <StatCard icon={UserCheck} label="Available Nurses" value={stats.nurses} color="bg-blue-500" />
         </div>
-      </div>
 
-      {/* ══ ZONES 3 & 4: SPLIT WORKSPACE ════════════════════════════════════════ */}
-      <div className="flex-1 overflow-hidden px-6 pb-4 grid grid-cols-12 gap-4">
+        {/* MAIN CONTENT */}
+        <div className="flex gap-6 flex-1">
 
-        {/* ── ZONE 3: LEFT LEDGER (7/12) ───────────────────────────────────── */}
-        <div className="col-span-7 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-          {/* Ledger Header */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 shrink-0">
-            <div className="flex items-center gap-2">
-              <FlaskConical size={15} className="text-teal-600" />
-              <span className="text-sm font-bold text-slate-800 tracking-tight">
-                Oncology Patient Registry
-              </span>
-              <span className="ml-1 text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full tabular-nums">
-                {patientLedger.length} registered
-              </span>
+          {/* PATIENT LIST */}
+          <div className="flex-1 bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-gray-800">Patient Registry</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{patients.length} patients registered</p>
+              </div>
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Search patients..."
+                  className="pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 w-52"
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
-              <Zap size={10} className="text-teal-400" />
-              Real-time stream · auto-prepend on commit
+
+            {/* Table Header */}
+            <div className="grid grid-cols-12 px-5 py-2 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              <span className="col-span-4">Patient</span>
+              <span className="col-span-3">Diagnosis</span>
+              <span className="col-span-2">Doctor</span>
+              <span className="col-span-1">Risk</span>
+              <span className="col-span-2">Status</span>
             </div>
-          </div>
 
-          {/* Ledger Column Headers */}
-          <div className="grid grid-cols-12 gap-2 px-5 py-2 bg-slate-50 border-b border-slate-100 shrink-0">
-            <span className="col-span-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Patient / ID</span>
-            <span className="col-span-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Diagnosis Protocol</span>
-            <span className="col-span-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Oncologist</span>
-            <span className="col-span-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Risk</span>
-            <span className="col-span-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</span>
-            <span className="col-span-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Detail</span>
-          </div>
-
-          {/* Ledger Rows */}
-          <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
-            {patientLedger.map((patient, idx) => (
-              <div
-                key={patient.id}
-                onClick={() => setSelectedPatient(selectedPatient?.id === patient.id ? null : patient)}
-                className={`grid grid-cols-12 gap-2 px-5 py-3 cursor-pointer transition-colors ${
-                  selectedPatient?.id === patient.id
-                    ? "bg-teal-50 border-l-2 border-teal-500"
-                    : idx === 0 && patientLedger.length > INITIAL_PATIENTS.length
-                    ? "bg-emerald-50/60 hover:bg-slate-50"
-                    : "hover:bg-slate-50"
-                }`}
-              >
-                {/* Patient + ID */}
-                <div className="col-span-3 min-w-0">
-                  <p className="text-xs font-semibold text-slate-800 truncate leading-tight">{patient.name}</p>
-                  <p className="text-[10px] font-mono text-teal-600 mt-0.5">{patient.id}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Age {patient.age} · {patient.createdAt}</p>
-                </div>
-
-                {/* Diagnosis */}
-                <div className="col-span-3 min-w-0 flex items-start">
-                  <p className="text-[11px] text-slate-600 leading-snug line-clamp-2">{patient.diagnosis}</p>
-                </div>
-
-                {/* Doctor */}
-                <div className="col-span-2 min-w-0 flex items-center">
-                  <div>
-                    <p className="text-[11px] text-slate-700 font-medium leading-tight truncate">{patient.doctor}</p>
-                    <p className="text-[10px] text-slate-400">{patient.phone}</p>
+            {/* Rows */}
+            <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
+              {loading ? (
+                <div className="flex items-center justify-center py-16 text-gray-400 text-sm">Loading...</div>
+              ) : filtered.length === 0 ? (
+                <div className="flex items-center justify-center py-16 text-gray-400 text-sm">No patients found.</div>
+              ) : filtered.map(p => (
+                <div key={p.id}
+                  onClick={() => setSelectedPatient(selectedPatient?.id === p.id ? null : p)}
+                  className={`grid grid-cols-12 px-5 py-3 cursor-pointer transition-colors ${selectedPatient?.id === p.id ? "bg-teal-50" : "hover:bg-gray-50"}`}
+                >
+                  <div className="col-span-4">
+                    <p className="text-sm font-medium text-gray-800">{p.name}</p>
+                    <p className="text-xs text-teal-600 font-mono">{p.patient_code || "—"}</p>
+                    <p className="text-xs text-gray-400">Age {p.age} · {new Date(p.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
                   </div>
-                </div>
+                  <div className="col-span-3 flex items-center">
+                    <p className="text-xs text-gray-600 line-clamp-2">{p.diagnosis || "—"}</p>
+                  </div>
+                  <div className="col-span-2 flex items-center">
+                    <p className="text-xs text-gray-700">{p.doctors?.name || "—"}</p>
+                  </div>
+                  <div className="col-span-1 flex items-center">
+                    <Badge label={p.high_risk_flags?.[0] || "Low"} colorMap={RISK_COLORS} />
+                  </div>
+                  <div className="col-span-2 flex items-center justify-between">
+                    <Badge label={p.consent_status || "Pending"} colorMap={CONSENT_COLORS} />
+                    <ChevronRight size={14} className={`text-gray-300 transition-transform ${selectedPatient?.id === p.id ? "rotate-90 text-teal-500" : ""}`} />
+                  </div>
 
-                {/* Risk */}
-                <div className="col-span-1 flex items-center">
-                  <RiskPill tier={patient.riskTier} />
-                </div>
-
-                {/* Status */}
-                <div className="col-span-2 flex items-center">
-                  <StatusPill status={patient.status} />
-                </div>
-
-                {/* Expand */}
-                <div className="col-span-1 flex items-center justify-center">
-                  <ChevronRight
-                    size={14}
-                    className={`text-slate-300 transition-transform ${selectedPatient?.id === patient.id ? "rotate-90 text-teal-500" : ""}`}
-                  />
-                </div>
-
-                {/* Expanded Notes Row */}
-                {selectedPatient?.id === patient.id && (
-                  <div className="col-span-12 mt-1 pt-2 border-t border-teal-100">
-                    <div className="flex items-start gap-2 bg-white rounded-lg p-3 border border-teal-100">
-                      <FileText size={12} className="text-teal-500 mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Clinical Notes</p>
-                        <p className="text-[11px] text-slate-700 leading-relaxed">{patient.notes}</p>
+                  {selectedPatient?.id === p.id && (
+                    <div className="col-span-12 mt-2 pt-2 border-t border-teal-100">
+                      <div className="bg-teal-50 rounded-lg p-3 flex gap-2">
+                        <FileText size={13} className="text-teal-500 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-xs font-semibold text-gray-600 mb-1">Clinical Notes</p>
+                          <p className="text-xs text-gray-600 leading-relaxed">{p.feedback || "No additional notes."}</p>
+                        </div>
                       </div>
                     </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* INTAKE FORM */}
+          <div className="w-96 bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <h2 className="text-base font-semibold text-gray-800">Add New Patient</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Fill in patient details to register</p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Full Name <span className="text-red-400">*</span></label>
+                  <input type="text" name="name" value={form.name} onChange={handleChange}
+                    placeholder="e.g. Rajiv Shankar Pillai"
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-gray-300" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Age <span className="text-red-400">*</span></label>
+                    <input type="number" name="age" value={form.age} onChange={handleChange}
+                      placeholder="e.g. 58" min={1} max={120}
+                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-gray-300" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Phone <span className="text-red-400">*</span></label>
+                    <input type="tel" name="phone" value={form.phone} onChange={handleChange}
+                      placeholder="+91 98XXXXXXXX"
+                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-gray-300" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Address <span className="text-red-400">*</span></label>
+                  <input type="text" name="address" value={form.address} onChange={handleChange}
+                    placeholder="e.g. 12, Marine Lines, Mumbai"
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-gray-300" />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Diagnosis <span className="text-red-400">*</span></label>
+                  <textarea name="diagnosis" value={form.diagnosis} onChange={handleChange}
+                    placeholder="e.g. Stage III Lung Carcinoma — Protocol Carboplatin"
+                    rows={2}
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-gray-300 resize-none" />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Cancer Type</label>
+                  <input type="text" name="cancer_type" value={form.cancer_type} onChange={handleChange}
+                    placeholder="e.g. Adenocarcinoma"
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-gray-300" />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Assigned Doctor <span className="text-red-400">*</span></label>
+                  <div className="relative">
+                    <Stethoscope size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <select name="doctor_id" value={form.doctor_id} onChange={handleChange}
+                      className="w-full text-sm border border-gray-200 rounded-lg pl-8 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none bg-white">
+                      <option value="">Select a doctor</option>
+                      {doctors.map(d => (
+                        <option key={d.id} value={d.id}>{d.name} — {d.specialization}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2">Risk Level</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {["Low", "Medium", "High", "Critical"].map(tier => {
+                      const cfg = RISK_COLORS[tier];
+                      return (
+                        <button key={tier} type="button"
+                          onClick={() => setForm(p => ({ ...p, riskTier: tier }))}
+                          className={`py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                            form.riskTier === tier
+                              ? `${cfg.bg} ${cfg.text} border-transparent ring-2 ring-offset-1 ${tier === "Critical" ? "ring-red-300" : tier === "High" ? "ring-orange-300" : tier === "Medium" ? "ring-blue-300" : "ring-gray-300"}`
+                              : "bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100"
+                          }`}>
+                          {tier}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Notes <span className="text-gray-400 font-normal">(optional)</span></label>
+                  <textarea name="notes" value={form.notes} onChange={handleChange}
+                    placeholder="Any additional clinical or operational notes..."
+                    rows={2}
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-gray-300 resize-none" />
+                </div>
+
+                {formError && (
+                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    <AlertTriangle size={13} className="text-red-500 shrink-0" />
+                    <p className="text-xs text-red-700">{formError}</p>
                   </div>
                 )}
-              </div>
-            ))}
-          </div>
 
-          {/* Ledger Footer */}
-          <div className="px-5 py-2 border-t border-slate-100 bg-slate-50 shrink-0 flex items-center justify-between">
-            <span className="text-[10px] text-slate-400 font-mono">
-              Postgres seq: patient_registry · Ordered by created_at DESC
-            </span>
-            <span className="text-[10px] text-slate-400">
-              Triage pending: <strong className="text-amber-600">{triageCount}</strong> · Ready: <strong className="text-teal-600">{readyCount}</strong>
-            </span>
-          </div>
-        </div>
+                {success && (
+                  <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                    <CheckCircle2 size={13} className="text-green-600 shrink-0" />
+                    <p className="text-xs text-green-700 font-medium">Patient registered successfully.</p>
+                  </div>
+                )}
 
-        {/* ── ZONE 4: RIGHT INTAKE FORM (5/12) ─────────────────────────────── */}
-        <div className="col-span-5 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-          {/* Form Header */}
-          <div className="flex items-center gap-2 px-5 py-3 border-b border-slate-100 shrink-0">
-            <UserPlus size={15} className="text-teal-600" />
-            <div>
-              <span className="text-sm font-bold text-slate-800">Central Patient Intake</span>
-              <p className="text-[10px] text-slate-400 leading-none mt-0.5">Manual registry commit · Admin-authorised onboarding</p>
-            </div>
-          </div>
-
-          {/* Form Body */}
-          <div className="flex-1 overflow-y-auto px-5 py-4">
-            <form onSubmit={handleCommit} className="flex flex-col gap-4" noValidate>
-
-              {/* Patient Legal Name */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-widest mb-1.5">
-                  Patient Full Legal Name <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={form.name}
-                  onChange={handleFormChange}
-                  placeholder="e.g. Rajiv Shankar Pillai"
-                  className="w-full text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent placeholder:text-slate-300 transition"
-                />
-              </div>
-
-              {/* Age + Phone row */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-widest mb-1.5">
-                    Age <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="age"
-                    value={form.age}
-                    onChange={handleFormChange}
-                    placeholder="e.g. 58"
-                    min={1}
-                    max={120}
-                    className="w-full text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent placeholder:text-slate-300 transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-widest mb-1.5">
-                    Primary Phone <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={form.phone}
-                    onChange={handleFormChange}
-                    placeholder="+91 98XXXXXXXX"
-                    className="w-full text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent placeholder:text-slate-300 transition"
-                  />
-                </div>
-              </div>
-
-              {/* Oncology Classification */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-widest mb-1.5">
-                  Oncology Classification / Clinical Notes <span className="text-red-400">*</span>
-                </label>
-                <textarea
-                  name="diagnosis"
-                  value={form.diagnosis}
-                  onChange={handleFormChange}
-                  placeholder="e.g. Stage III Non-Small Cell Lung Carcinoma — Protocol Carboplatin/Pemetrexed"
-                  rows={3}
-                  className="w-full text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent placeholder:text-slate-300 resize-none transition"
-                />
-              </div>
-
-              {/* Assigning Doctor */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-widest mb-1.5">
-                  Assigning Oncologist <span className="text-red-400">*</span>
-                </label>
-                <div className="relative">
-                  <Stethoscope size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                  <select
-                    name="doctor"
-                    value={form.doctor}
-                    onChange={handleFormChange}
-                    className="w-full text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent appearance-none cursor-pointer transition"
-                  >
-                    <option value="">— Select treating doctor —</option>
-                    {DOCTORS.map((doc) => (
-                      <option key={doc} value={doc}>{doc}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Risk Tier */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-widest mb-2">
-                  Risk Tier Classification
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {["Low", "Medium", "High", "Critical"].map((tier) => {
-                    const cfg = RISK_CONFIG[tier];
-                    const isSelected = form.riskTier === tier;
-                    return (
-                      <button
-                        key={tier}
-                        type="button"
-                        onClick={() => setForm((p) => ({ ...p, riskTier: tier }))}
-                        className={`py-2 rounded-lg text-[11px] font-bold border transition-all ${
-                          isSelected
-                            ? `${cfg.bg} ${cfg.text} ${cfg.border} shadow-sm ring-2 ${
-                                tier === "Critical"
-                                  ? "ring-red-300"
-                                  : tier === "High"
-                                  ? "ring-orange-300"
-                                  : tier === "Medium"
-                                  ? "ring-sky-300"
-                                  : "ring-slate-300"
-                              }`
-                            : "bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100"
-                        }`}
-                      >
-                        {tier}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Additional Notes */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-widest mb-1.5">
-                  Operational Notes
-                  <span className="ml-2 text-[10px] font-normal text-slate-400 normal-case tracking-normal">Optional</span>
-                </label>
-                <textarea
-                  name="notes"
-                  value={form.notes}
-                  onChange={handleFormChange}
-                  placeholder="Port-a-cath status, mobility constraints, caregiver present, preferred time window…"
-                  rows={2}
-                  className="w-full text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent placeholder:text-slate-300 resize-none transition"
-                />
-              </div>
-
-              {/* Error Message */}
-              {formError && (
-                <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
-                  <AlertTriangle size={13} className="text-red-500 mt-0.5 shrink-0" />
-                  <p className="text-xs text-red-700">{formError}</p>
-                </div>
-              )}
-
-              {/* Success Message */}
-              {commitSuccess && (
-                <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5">
-                  <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
-                  <p className="text-xs text-emerald-700 font-medium">
-                    Patient committed to registry. Row prepended to ledger — triage queue updated.
-                  </p>
-                </div>
-              )}
-
-              {/* Submit */}
-              <button
-                type="submit"
-                className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold text-sm py-3 rounded-xl shadow-sm transition-all active:scale-[0.98] cursor-pointer"
-              >
-                <PlusCircle size={15} />
-                Commit Registry Row
-              </button>
-            </form>
-          </div>
-
-          {/* Form Footer info strip */}
-          <div className="px-5 py-2.5 border-t border-slate-100 bg-slate-50 shrink-0">
-            <div className="flex items-center gap-2">
-              <ShieldAlert size={11} className="text-slate-400" />
-              <p className="text-[10px] text-slate-400">
-                Registry commits auto-assign{" "}
-                <span className="font-mono font-semibold text-amber-600">status = Pending Doc</span>
-                {" "}and trigger sign-off triage counter.
-              </p>
+                <button type="submit" disabled={submitting}
+                  className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm py-3 rounded-xl transition-all disabled:opacity-60">
+                  <PlusCircle size={15} />
+                  {submitting ? "Saving..." : "Register Patient"}
+                </button>
+              </form>
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );
