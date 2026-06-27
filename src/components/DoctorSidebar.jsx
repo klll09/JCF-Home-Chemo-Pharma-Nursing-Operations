@@ -1,8 +1,9 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, ClipboardList, FileText,
   Users, Settings, LogOut, Activity
 } from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
 
 const NAV = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/doctor/dashboard" },
@@ -13,6 +14,13 @@ const NAV = [
 
 export default function DoctorSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   return (
     <aside className="w-56 bg-white border-r border-gray-200 flex flex-col shrink-0 h-screen">
@@ -47,7 +55,8 @@ export default function DoctorSidebar() {
         <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50">
           <Settings size={15} />Settings
         </button>
-        <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50">
+        <button onClick={handleSignOut}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50">
           <LogOut size={15} />Sign Out
         </button>
       </div>

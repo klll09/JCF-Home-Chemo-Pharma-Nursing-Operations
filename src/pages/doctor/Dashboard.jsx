@@ -117,7 +117,7 @@ export default function DoctorDashboard() {
             <div className="bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-amber-400" />
-                <h2 className="text-sm font-semibold text-gray-800">Pending Your Approval</h2>
+                <h2 className="text-sm font-semibold text-gray-800">Approval Pending</h2>
                 <span className="ml-auto text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{draftRequests.length}</span>
               </div>
 
