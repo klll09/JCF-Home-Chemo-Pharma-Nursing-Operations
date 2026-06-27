@@ -9,12 +9,17 @@ import AdminDashboard from './AdminDashboard'
 import CareRequests from './pages/admin/CareRequests'
 import NurseAssignment from './pages/admin/NurseAssignment'
 import Distributors from './pages/admin/Distributors'
+import MedicineRequisitions from './pages/admin/MedicineRequisitions'
 import DoctorDashboard from './pages/doctor/Dashboard'
 import NurseDashboard from './pages/nurse/Dashboard'
 
 function RoleRedirect() {
   const { role, loading } = useAuth();
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><p className="text-sm text-gray-400">Loading...</p></div>;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <p className="text-sm text-gray-400">Loading...</p>
+    </div>
+  );
   if (role === "Admin") return <Navigate to="/admin/dashboard" />;
   if (role === "Doctor") return <Navigate to="/doctor/dashboard" />;
   if (role === "Nurse") return <Navigate to="/nurse/dashboard" />;
@@ -47,6 +52,11 @@ function App() {
         <Route path="/admin/distributors" element={
           <ProtectedRoute allowedRoles={["Admin"]}>
             <Layout><Distributors /></Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/requisitions" element={
+          <ProtectedRoute allowedRoles={["Admin"]}>
+            <Layout><MedicineRequisitions /></Layout>
           </ProtectedRoute>
         } />
 
