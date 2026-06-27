@@ -1,17 +1,18 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, ClipboardList, UserCheck,
-  Truck, Settings, LogOut, Activity, Package
+  Truck, Settings, LogOut, Activity, Package, ShieldAlert
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 
 const NAV = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin/dashboard" },
-  { icon: Users, label: "Patients", path: "/admin/dashboard" },
+  { icon: Users, label: "Patients", path: "/admin/patients" },
   { icon: ClipboardList, label: "Care Requests", path: "/admin/care-requests" },
   { icon: UserCheck, label: "Nurse Assignment", path: "/admin/nurse-assignment" },
   { icon: Truck, label: "Distributors", path: "/admin/distributors" },
   { icon: Package, label: "Requisitions", path: "/admin/requisitions" },
+  { icon: ShieldAlert, label: "Incidents", path: "/admin/incidents" },
 ];
 
 export default function Sidebar() {
