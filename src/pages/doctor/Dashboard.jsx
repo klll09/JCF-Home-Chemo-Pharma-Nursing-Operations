@@ -4,6 +4,7 @@ import {
   RefreshCw, FileText, User, Calendar, Clock, Activity
 } from "lucide-react";
 import { supabase } from "../../superbase";
+import DoctorProfileMenu from "../../components/DoctorProfileMenu";
 
 const STATUS_COLORS = {
   Draft: "bg-gray-100 text-gray-600",
@@ -80,10 +81,13 @@ export default function DoctorDashboard() {
           <h1 className="text-base font-semibold text-gray-900">Doctor Dashboard</h1>
           <p className="text-xs text-gray-400">Review and approve care requests</p>
         </div>
+        <div className="flex items-center gap-3">
         <button onClick={() => { setLoading(true); fetchAll().finally(() => setLoading(false)); }}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition">
           <RefreshCw size={12} className={loading ? "animate-spin" : ""} />Refresh
         </button>
+        <DoctorProfileMenu />
+      </div>
       </header>
 
       <div className="flex-1 overflow-auto p-6 flex flex-col gap-5">

@@ -5,6 +5,7 @@ import {
   ChevronRight, Shield
 } from "lucide-react";
 import { supabase } from "../../superbase";
+import NurseProfileMenu from "../../components/NurseProfileMenu";
 
 const STATUS_COLORS = {
   Pending: "bg-gray-100 text-gray-600",
@@ -143,10 +144,13 @@ export default function NurseDashboard() {
           <h1 className="text-base font-semibold text-gray-900">Nurse Dashboard</h1>
           <p className="text-xs text-gray-400">Manage your assigned visits</p>
         </div>
-        <button onClick={() => { setLoading(true); fetchAll().finally(() => setLoading(false)); }}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition">
-          <RefreshCw size={12} className={loading ? "animate-spin" : ""} />Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={() => { setLoading(true); fetchAll().finally(() => setLoading(false)); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition">
+            <RefreshCw size={12} className={loading ? "animate-spin" : ""} />Refresh
+          </button>
+          <NurseProfileMenu />
+        </div>
       </header>
 
       <div className="flex-1 overflow-auto p-6 flex flex-col gap-5">

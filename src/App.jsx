@@ -14,6 +14,11 @@ import DoctorDashboard from './pages/doctor/Dashboard'
 import NurseDashboard from './pages/nurse/Dashboard'
 import Incidents from './pages/admin/Incidents'
 import Patients from './pages/admin/Patients'
+import ResourceForm from './pages/nurse/ResourceForm'
+import DoctorCareRequests from './pages/doctor/CareRequests'
+import DoctorSummaries from './pages/doctor/Summaries'
+import DoctorPatients from './pages/doctor/Patients'
+import Settings from './pages/Settings'
 
 function RoleRedirect() {
   const { role, loading } = useAuth();
@@ -76,11 +81,36 @@ function App() {
             <Layout><MedicineRequisitions /></Layout>
           </ProtectedRoute>
         } />
+        <Route path="/admin/settings" element={
+          <ProtectedRoute allowedRoles={["Admin"]}>
+            <Layout><Settings /></Layout>
+          </ProtectedRoute>
+        } />
 
         {/* Doctor */}
         <Route path="/doctor/dashboard" element={
           <ProtectedRoute allowedRoles={["Doctor"]}>
             <DoctorLayout><DoctorDashboard /></DoctorLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/doctor/care-requests" element={
+          <ProtectedRoute allowedRoles={["Doctor"]}>
+            <DoctorLayout><DoctorCareRequests /></DoctorLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/doctor/summaries" element={
+          <ProtectedRoute allowedRoles={["Doctor"]}>
+            <DoctorLayout><DoctorSummaries /></DoctorLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/doctor/patients" element={
+          <ProtectedRoute allowedRoles={["Doctor"]}>
+            <DoctorLayout><DoctorPatients /></DoctorLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/doctor/settings" element={
+          <ProtectedRoute allowedRoles={["Doctor"]}>
+            <DoctorLayout><Settings /></DoctorLayout>
           </ProtectedRoute>
         } />
 
@@ -90,6 +120,17 @@ function App() {
             <NurseLayout><NurseDashboard /></NurseLayout>
           </ProtectedRoute>
         } />
+        <Route path="/nurse/reports" element={
+          <ProtectedRoute allowedRoles={["Nurse"]}>
+            <NurseLayout><ResourceForm /></NurseLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/nurse/settings" element={
+          <ProtectedRoute allowedRoles={["Nurse"]}>
+            <NurseLayout><Settings /></NurseLayout>
+          </ProtectedRoute>
+        } />
+        
       </Routes>
     </Router>
   )

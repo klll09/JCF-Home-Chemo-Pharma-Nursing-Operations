@@ -4,7 +4,6 @@ import { useAuth } from "../hooks/useAuth";
 
 const NAV = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/nurse/dashboard" },
-  { icon: Calendar, label: "My Visits", path: "/nurse/dashboard" },
   { icon: FileText, label: "Reports", path: "/nurse/reports" },
 ];
 
@@ -45,9 +44,10 @@ export default function NurseSidebar() {
         ))}
       </nav>
       <div className="px-3 py-4 border-t border-gray-100 space-y-0.5">
-        <button className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50">
+         <Link to="/nurse/settings"
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50">
           <Settings size={15} />Settings
-        </button>
+        </Link>
         <button onClick={handleSignOut}
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50">
           <LogOut size={15} />Sign Out
