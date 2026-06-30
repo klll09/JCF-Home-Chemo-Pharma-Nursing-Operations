@@ -110,6 +110,11 @@ export default function AdminDashboard() {
     if (!form.diagnosis.trim()) return setFormError("Diagnosis is required.");
     if (!form.doctor_id) return setFormError("Please select a doctor.");
 
+    // 🌟 CAPTURE VALUES IMMEDIATELY BEFORE ANY BULK ACTIONS RUN
+    const targetPhone = form.phone.replace(/\D/g, "");
+    const targetName = form.name.trim();
+    const targetAddress = form.address.trim();
+
     setSubmitting(true);
     const { error } = await supabase.from("patients").insert({
       name: form.name.trim(),
@@ -126,12 +131,39 @@ export default function AdminDashboard() {
     setSubmitting(false);
 
     if (error) return setFormError("Failed to save: " + error.message);
+
+    // ==========================================
+    // 🚀 STABLE WHATSAPP REDIRECT
+    // ==========================================
+    try {
+      const countryCode = "91";
+      const whatsappMessage = 
+        `*JARURAT CARE | INTAKE CONFIRMATION*\n\n` +
+        `Hello *${targetName}*,\n` +
+        `Your registration for home chemotherapy & nursing services has been received.\n\n` +
+        `📋 *Status:* Pending Doctor Sign-off\n` +
+        `📍 *Address:* ${targetAddress}\n\n` +
+        `Our clinical operations team will notify you once a nurse has been assigned.`;
+       
+
+      const encodedText = encodeURIComponent(whatsappMessage);
+      const targetUrl = `https://wa.me/${countryCode}${targetPhone}?text=${encodedText}`;
+      
+      console.log("Triggering navigation redirect target:", targetUrl);
+      
+      // Forces a fallback navigation swap if Chrome drops the async popup
+      window.location.assign(targetUrl);
+
+    } catch (wsError) {
+      console.error("WhatsApp redirection macro failed:", wsError);
+    }
+    // ==========================================
+
     setForm({ name: "", age: "", phone: "", address: "", diagnosis: "", cancer_type: "", doctor_id: "", riskTier: "Medium", notes: "" });
     setSuccess(true);
     setTimeout(() => setSuccess(false), 3000);
     await fetchAll();
   };
-
   const filtered = patients.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     (p.patient_code || "").toLowerCase().includes(search.toLowerCase())
