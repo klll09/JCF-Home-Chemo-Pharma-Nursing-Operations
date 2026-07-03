@@ -6,7 +6,7 @@ const STATUS_COLORS = {
   DraftGenerated: "bg-gray-100 text-gray-600",
   DoctorReview: "bg-amber-100 text-amber-700",
   Approved: "bg-green-100 text-green-700",
-  Sent: "bg-blue-100 text-blue-700",
+  Sent: "bg-teal-100 text-teal-700",
 };
 
 export default function DoctorSummaries() {
@@ -73,13 +73,13 @@ export default function DoctorSummaries() {
                 </span>
                 {s.final_pdf_url && s.final_pdf_url !== "pending-upload" && (
                   <a href={s.final_pdf_url} target="_blank" rel="noreferrer"
-                    className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline">
+                    className="flex items-center gap-1 text-xs font-medium text-teal-600 hover:underline">
                     <ExternalLink size={11} />View PDF
                   </a>
                 )}
                 {s.status === "DoctorReview" && (
                   <button onClick={() => handleApprove(s.id)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition">
+                    className="flex items-center gap-1 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-lg transition">
                     <CheckCircle2 size={12} />Approve
                   </button>
                 )}

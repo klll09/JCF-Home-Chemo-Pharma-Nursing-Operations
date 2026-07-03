@@ -8,7 +8,7 @@ import DoctorProfileMenu from "../../components/DoctorProfileMenu";
 
 const STATUS_COLORS = {
   Draft: "bg-gray-100 text-gray-600",
-  DoctorApproved: "bg-blue-100 text-blue-700",
+  DoctorApproved: "bg-teal-100 text-teal-700",
   Scheduled: "bg-teal-100 text-teal-700",
   Completed: "bg-green-100 text-green-700",
 };
@@ -209,7 +209,7 @@ useEffect(() => {
         <div className="grid grid-cols-4 gap-4">
           {[
             { label: "Pending Approval", value: stats.draft, color: "bg-amber-50 text-amber-600", icon: ClipboardList },
-            { label: "Approved", value: stats.approved, color: "bg-blue-50 text-blue-600", icon: CheckCircle2 },
+            { label: "Approved", value: stats.approved, color: "bg-teal-50 text-teal-600", icon: CheckCircle2 },
             { label: "Completed", value: stats.completed, color: "bg-green-50 text-green-600", icon: Activity },
             { label: "Summaries to Review", value: stats.pendingSummaries, color: "bg-purple-50 text-purple-600", icon: FileText },
           ].map(({ label, value, color, icon: Icon }) => (

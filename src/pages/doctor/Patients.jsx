@@ -49,7 +49,7 @@ export default function DoctorPatients() {
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search patients..."
-              className="pl-8 pr-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 w-52 bg-gray-50" />
+              className="pl-8 pr-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 w-52 bg-gray-50" />
           </div>
           <button onClick={() => { setLoading(true); fetchPatients().finally(() => setLoading(false)); }}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition">
@@ -73,18 +73,18 @@ export default function DoctorPatients() {
             <div key={p.id}
               onClick={() => setSelected(selected?.id === p.id ? null : p)}
               className={`px-5 py-3 cursor-pointer border-b border-gray-50 transition-colors flex items-center justify-between ${
-                selected?.id === p.id ? "bg-blue-50" : idx % 2 === 0 ? "bg-white hover:bg-gray-50" : "bg-gray-50/50"
+                selected?.id === p.id ? "bg-teal-50" : idx % 2 === 0 ? "bg-white hover:bg-gray-50" : "bg-gray-50/50"
               }`}>
               <div>
                 <p className="text-sm font-semibold text-gray-800">{p.name}</p>
-                <p className="text-xs text-blue-600 font-mono">{p.patient_code}</p>
+                <p className="text-xs text-teal-600 font-mono">{p.patient_code}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{p.diagnosis || "No diagnosis on record"}</p>
               </div>
               <div className="flex items-center gap-3">
                 <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-md ${CONSENT_COLORS[p.consent_status] || CONSENT_COLORS.Pending}`}>
                   {p.consent_status}
                 </span>
-                <ChevronRight size={14} className={`text-gray-300 transition-transform ${selected?.id === p.id ? "rotate-90 text-blue-500" : ""}`} />
+                <ChevronRight size={14} className={`text-gray-300 transition-transform ${selected?.id === p.id ? "rotate-90 text-teal-500" : ""}`} />
               </div>
 
               {selected?.id === p.id && (
@@ -97,7 +97,7 @@ export default function DoctorPatients() {
         {selected && (
           <div className="bg-white rounded-xl border border-gray-200 mt-4 p-5">
             <div className="flex items-center gap-2 mb-3">
-              <FileText size={14} className="text-blue-600" />
+              <FileText size={14} className="text-teal-600" />
               <p className="text-sm font-semibold text-gray-800">Patient Details — {selected.name}</p>
             </div>
             <div className="grid grid-cols-3 gap-3">
