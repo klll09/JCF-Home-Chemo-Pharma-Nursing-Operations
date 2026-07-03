@@ -218,11 +218,10 @@ export default function NurseAssignment() {
           </div>
 
           {/* RIGHT PANEL */}
-          <div className="w-80 flex flex-col gap-4 shrink-0">
-
-            {/* ASSIGN FORM */}
-            <div className="bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100">
+          <div className="w-80 flex flex-col gap-4 shrink-0 overflow-y-auto">
+             {/* ASSIGN FORM */}
+            <div className="bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden max-h-[60vh]">
+              <div className="px-5 py-4 border-b border-gray-100 shrink-0">
                 <h2 className="text-sm font-semibold text-gray-800">Assign Nurses</h2>
                 <p className="text-xs text-gray-400 mt-0.5">
                   {selectedRequest
@@ -231,7 +230,7 @@ export default function NurseAssignment() {
                 </p>
               </div>
 
-              <div className="px-5 py-4">
+              <div className="px-5 py-4 overflow-y-auto">
                 {!selectedRequest ? (
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <UserCheck size={28} className="text-gray-200" />
@@ -316,6 +315,7 @@ export default function NurseAssignment() {
                 )}
               </div>
             </div>
+
 
             {/* AVAILABLE NURSES LIST */}
             <div className="bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden">

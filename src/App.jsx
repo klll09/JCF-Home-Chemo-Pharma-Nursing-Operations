@@ -14,6 +14,7 @@ import DoctorDashboard from './pages/doctor/Dashboard'
 import NurseDashboard from './pages/nurse/Dashboard'
 import Incidents from './pages/admin/Incidents'
 import Patients from './pages/admin/Patients'
+import Staff from './pages/admin/Staff'
 import ResourceForm from './pages/nurse/ResourceForm'
 import DoctorCareRequests from './pages/doctor/CareRequests'
 import DoctorSummaries from './pages/doctor/Summaries'
@@ -44,6 +45,11 @@ function App() {
         <Route path="/admin/dashboard" element={
           <ProtectedRoute allowedRoles={["Admin"]}>
             <Layout><AdminDashboard /></Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/staff" element={
+          <ProtectedRoute allowedRoles={["Admin"]}>
+            <Layout><Staff /></Layout>
           </ProtectedRoute>
         } />
         <Route path="/admin/patients" element={
