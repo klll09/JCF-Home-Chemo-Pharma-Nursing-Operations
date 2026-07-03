@@ -19,39 +19,152 @@ export default function DoctorDashboard() {
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(null);
+  const [doctorId, setDoctorId] = useState(null);
   const [stats, setStats] = useState({ draft: 0, approved: 0, completed: 0, pendingSummaries: 0 });
 
-  async function fetchAll() {
-    const [reqs, sums, draft, approved, completed, pendingSums] = await Promise.all([
-      supabase.from("care_requests")
-        .select(`id, service_type, scheduled_date, duration, location, status, medicine_required, created_at,
-          patients(name, patient_code, age, diagnosis)`)
-        .order("created_at", { ascending: false }),
-      supabase.from("summaries")
-        .select(`id, status, created_at, final_pdf_url,
-          visits(care_request_id,
-            care_requests(patients(name, patient_code)))`)
-        .eq("status", "DoctorReview"),
-      supabase.from("care_requests").select("id", { count: "exact", head: true }).eq("status", "Draft"),
-      supabase.from("care_requests").select("id", { count: "exact", head: true }).eq("status", "DoctorApproved"),
-      supabase.from("care_requests").select("id", { count: "exact", head: true }).eq("status", "Completed"),
-      supabase.from("summaries").select("id", { count: "exact", head: true }).eq("status", "DoctorReview"),
-    ]);
 
-    setRequests(reqs.data || []);
-    setSummaries(sums.data || []);
-    setStats({
-      draft: draft.count || 0,
-      approved: approved.count || 0,
-      completed: completed.count || 0,
-      pendingSummaries: pendingSums.count || 0,
-    });
+  async function getLoggedInDoctorId() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const { data: userRow, error: userError } = await supabase
+    .from("users")
+    .select("id")
+    .eq("auth_id", user.id)
+    .single();
+
+  if (userError || !userRow) return null;
+
+  const { data: doctor, error: doctorError } = await supabase
+    .from("doctors")
+    .select("id")
+    .eq("user_id", userRow.id)
+    .single();
+
+  if (doctorError || !doctor) return null;
+
+  return doctor.id;
+}
+
+async function fetchAll() {
+  if (!doctorId) return;
+
+  const [
+    reqs,
+    sums,
+    draft,
+    approved,
+    completed,
+    pendingSums,
+  ] = await Promise.all([
+    supabase
+      .from("care_requests")
+      .select(`
+        id,
+        service_type,
+        scheduled_date,
+        duration,
+        location,
+        status,
+        medicine_required,
+        created_at,
+        patients(
+          name,
+          patient_code,
+          age,
+          diagnosis
+        )
+      `)
+      .eq("doctor_id", doctorId)
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("summaries")
+      .select(`
+        id,
+        status,
+        created_at,
+        final_pdf_url,
+        visits(
+          care_request_id,
+          care_requests(
+            doctor_id,
+            patients(
+              name,
+              patient_code
+            )
+          )
+        )
+      `)
+      .eq("status", "DoctorReview"),
+
+    supabase
+      .from("care_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("doctor_id", doctorId)
+      .eq("status", "Draft"),
+
+    supabase
+      .from("care_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("doctor_id", doctorId)
+      .eq("status", "DoctorApproved"),
+
+    supabase
+      .from("care_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("doctor_id", doctorId)
+      .eq("status", "Completed"),
+
+    supabase
+      .from("summaries")
+      .select("id", { count: "exact", head: true }),
+  ]);
+
+  const doctorSummaries =
+    sums.data?.filter(
+      (s) =>
+        s.visits?.care_requests?.doctor_id === doctorId
+    ) || [];
+
+  setRequests(reqs.data || []);
+
+  setSummaries(doctorSummaries);
+
+  setStats({
+    draft: draft.count || 0,
+    approved: approved.count || 0,
+    completed: completed.count || 0,
+    pendingSummaries: doctorSummaries.length,
+  });
+}
+useEffect(() => {
+  async function init() {
+    setLoading(true);
+
+    const id = await getLoggedInDoctorId();
+
+    if (id) {
+      setDoctorId(id);
+    }
+
+    setLoading(false);
   }
 
-  useEffect(() => {
-    setLoading(true);
-    fetchAll().finally(() => setLoading(false));
-  }, []);
+  init();
+}, []);
+
+useEffect(() => {
+  if (!doctorId) return;
+
+  setLoading(true);
+
+  fetchAll().finally(() => setLoading(false));
+}, [doctorId]);
+
 
   const handleApprove = async (requestId) => {
     setApproving(requestId);

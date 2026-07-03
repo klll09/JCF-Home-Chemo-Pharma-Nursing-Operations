@@ -15,21 +15,77 @@ const STATUS_COLORS = {
 export default function DoctorCareRequests() {
   const [requests, setRequests] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [doctorId, setDoctorId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(null);
 
-  async function fetchAll() {
-    const { data } = await supabase.from("care_requests")
-      .select(`id, service_type, scheduled_date, duration, location, status, medicine_required, created_at,
-        patients(name, patient_code, age, diagnosis)`)
-      .order("created_at", { ascending: false });
-    setRequests(data || []);
+  async function getLoggedInDoctorId() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const { data: userRow } = await supabase
+    .from("users")
+    .select("id")
+    .eq("auth_id", user.id)
+    .single();
+
+  if (!userRow) return null;
+
+  const { data: doctor } = await supabase
+    .from("doctors")
+    .select("id")
+    .eq("user_id", userRow.id)
+    .single();
+
+  return doctor?.id || null;
+}
+
+async function fetchAll(currentDoctorId = doctorId) {
+  if (!currentDoctorId) return;
+
+  const { data } = await supabase
+    .from("care_requests")
+    .select(`
+      id,
+      service_type,
+      scheduled_date,
+      duration,
+      location,
+      status,
+      medicine_required,
+      created_at,
+      patients(
+        name,
+        patient_code,
+        age,
+        diagnosis
+      )
+    `)
+    .eq("doctor_id", currentDoctorId)
+    .order("created_at", { ascending: false });
+
+  setRequests(data || []);
+}
+
+useEffect(() => {
+  async function init() {
+    setLoading(true);
+
+    const id = await getLoggedInDoctorId();
+
+    if (id) {
+      setDoctorId(id);
+      await fetchAll(id);
+    }
+
+    setLoading(false);
   }
 
-  useEffect(() => {
-    setLoading(true);
-    fetchAll().finally(() => setLoading(false));
-  }, []);
+  init();
+}, []);
 
   const handleApprove = async (id) => {
     setApproving(id);
@@ -47,7 +103,7 @@ export default function DoctorCareRequests() {
           <h1 className="text-base font-semibold text-gray-900">Care Requests</h1>
           <p className="text-xs text-gray-400">All patient care requests</p>
         </div>
-        <button onClick={() => { setLoading(true); fetchAll().finally(() => setLoading(false)); }}
+        <button onClick={() => { setLoading(true); fetchAll(doctorId).finally(() => setLoading(false)); }}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition">
           <RefreshCw size={12} className={loading ? "animate-spin" : ""} />Refresh
         </button>
