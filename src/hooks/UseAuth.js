@@ -36,7 +36,7 @@ export function useAuth() {
     if (roleName === "Nurse") {
       const { data: nurseData } = await supabase
         .from("nurses")
-        .select("id, name, skills, area, availability_status, rating")
+        .select("id, name, skills, area, availability_status")
         .eq("user_id", userData.id)
         .single();
       setProfile(nurseData);
@@ -47,7 +47,15 @@ export function useAuth() {
         .eq("user_id", userData.id)
         .single();
       setProfile(doctorData);
-    } else {
+    }  else if (roleName === "Distributor") {
+  const { data: distributorData } = await supabase
+    .from("distributors")
+    .select("id, name, contact_phone, service_area, user_id")
+    .eq("user_id", userData.id)
+    .single();
+  setProfile(distributorData ? { ...distributorData, email: userData.email } : null);
+}
+    else {
       setProfile(userData);
     }
 

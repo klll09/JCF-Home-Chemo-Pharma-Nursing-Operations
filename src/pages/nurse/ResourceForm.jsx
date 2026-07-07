@@ -53,6 +53,7 @@ export default function ResourceForm() {
         .order("created_at", { ascending: false }),
     ]);
     setVisits(vis.data || []);
+    console.log(vis.data);
     setResources(res.data || []);
   }
 

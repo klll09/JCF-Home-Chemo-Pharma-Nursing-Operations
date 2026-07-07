@@ -55,6 +55,7 @@ export default function Login() {
     if (role === "Admin") navigate("/admin/dashboard");
     else if (role === "Doctor") navigate("/doctor/dashboard");
     else if (role === "Nurse") navigate("/nurse/dashboard");
+    else if (role === "Distributor") navigate("/distributor/dashboard");
     else {
       setError("No role assigned. Contact admin.");
       setLoading(false);

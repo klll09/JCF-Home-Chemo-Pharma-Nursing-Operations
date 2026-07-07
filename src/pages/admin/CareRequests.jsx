@@ -39,6 +39,7 @@ export default function CareRequests() {
     location: "",
     required_nurse_skill: "",
     medicine_required: false,
+    required_medicines: "",
     notes: "",
   });
 
@@ -97,6 +98,7 @@ export default function CareRequests() {
       location: form.location.trim(),
       required_nurse_skill: form.required_nurse_skill.trim() || null,
       medicine_required: form.medicine_required,
+      required_medicines: form.required_medicines,
       status: "Draft",
       created_by: null,
     });
@@ -329,6 +331,25 @@ export default function CareRequests() {
                     <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${form.medicine_required ? "left-5" : "left-0.5"}`} />
                   </button>
                 </div>
+                {form.medicine_required && (
+  <div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1">
+    Required Medicines
+  </label>
+
+  <textarea
+    name="required_medicines"
+    value={form.required_medicines}
+    onChange={handleChange}
+    rows={4}
+    placeholder={`Example:
+Inj. Meropenem 1gm
+NS 500ml
+Ondansetron 4mg`}
+    className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-gray-50 resize-none"
+  />
+</div>
+)}
 
                 {formError && (
                   <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
