@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, ClipboardList, UserCheck,
-  Truck, Settings, LogOut, Activity, Package, ShieldAlert, UserCog
+  Truck, Settings, LogOut, Activity, Package, ShieldAlert, UserCog, FolderOpen
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 
@@ -14,6 +14,7 @@ const NAV = [
   { icon: UserCog, label: "Add Staff", path: "/admin/staff" },
   { icon: Package, label: "Requisitions", path: "/admin/requisitions" },
   { icon: ShieldAlert, label: "Incidents", path: "/admin/incidents" },
+  { icon: FolderOpen, label: "Resources", path: "/admin/resources" },
 ];
 
 export default function Sidebar() {

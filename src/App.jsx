@@ -20,6 +20,7 @@ import DoctorCareRequests from './pages/doctor/CareRequests'
 import DoctorSummaries from './pages/doctor/Summaries'
 import DoctorPatients from './pages/doctor/Patients'
 import Settings from './pages/Settings'
+import AdminResources from './pages/admin/Resources'
 
 function RoleRedirect() {
   const { role, loading } = useAuth();
@@ -90,6 +91,11 @@ function App() {
         <Route path="/admin/settings" element={
           <ProtectedRoute allowedRoles={["Admin"]}>
             <Layout><Settings /></Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/resources" element={
+          <ProtectedRoute allowedRoles={["Admin"]}>
+            <Layout><AdminResources /></Layout>
           </ProtectedRoute>
         } />
 

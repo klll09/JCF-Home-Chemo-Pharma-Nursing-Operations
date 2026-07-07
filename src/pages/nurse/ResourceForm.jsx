@@ -49,8 +49,7 @@ export default function ResourceForm() {
           nurses(name)`)
         .order("created_at", { ascending: false }),
       supabase.from("resources")
-        .select(`id, resource_type, pdf_url, notes, created_at,
-          patients(name, patient_code)`)
+        .select(`id, resource_type, pdf_url, notes, created_at, visit_id`)
         .order("created_at", { ascending: false }),
     ]);
     setVisits(vis.data || []);
@@ -194,16 +193,32 @@ export default function ResourceForm() {
       const doc = generatePDF(selectedVisit, form.resource_type, form);
       const patient = selectedVisit.care_requests?.patients;
       const fileName = `${form.resource_type.replace(/\s+/g, "_")}_${patient?.patient_code || "patient"}.pdf`;
+      const filePath = `${Date.now()}_${fileName}`;
+
+      // Upload PDF blob to Supabase Storage
+      const pdfBlob = doc.output("blob");
+      const { error: uploadError } = await supabase.storage
+        .from("reports")
+        .upload(filePath, pdfBlob, { contentType: "application/pdf" });
+      if (uploadError) throw uploadError;
+
+      // Generate a long-lived signed URL (10 years)
+      const { data: signedData, error: signedError } = await supabase.storage
+        .from("reports")
+        .createSignedUrl(filePath, 315360000);
+      if (signedError) throw signedError;
+
+      // Also download locally for nurse's own copy
       doc.save(fileName);
 
+      // Save resource record with real URL
       const { error } = await supabase.from("resources").insert({
         patient_id: patient?.id,
         visit_id: form.visit_id,
         resource_type: form.resource_type,
-        pdf_url: "pending-upload",
+        pdf_url: signedData.signedUrl,
         notes: form.notes.trim() || null,
       });
-
       if (error) throw error;
 
       setSuccess(true);
@@ -223,12 +238,7 @@ export default function ResourceForm() {
     }
   };
 
-  const handleUpdateLink = async (resourceId, currentUrl) => {
-    const newUrl = prompt("Paste the Google Drive shareable link:", currentUrl === "pending-upload" ? "" : currentUrl);
-    if (!newUrl) return;
-    const { error } = await supabase.from("resources").update({ pdf_url: newUrl }).eq("id", resourceId);
-    if (!error) await fetchAll();
-  };
+
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -269,28 +279,19 @@ export default function ResourceForm() {
                     <FileText size={12} className="text-teal-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-800 truncate">{r.patients?.name || "—"}</p>
+                    <p className="text-xs font-semibold text-gray-800 truncate">
+                      {visits.find(v => v.id === r.visit_id)?.care_requests?.patients?.name || "—"}
+                    </p>
                     <p className="text-[10px] text-gray-400">{r.resource_type}</p>
                     <p className="text-[10px] text-gray-400">
                       {new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                     </p>
                   </div>
                 </div>
-                {r.pdf_url === "pending-upload" ? (
-                  <button onClick={() => handleUpdateLink(r.id, r.pdf_url)}
-                    className="w-full text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-1.5 rounded-md hover:bg-amber-200 transition">
-                    + Add Drive Link
-                  </button>
-                ) : (
-                  <div className="flex gap-1.5">
-                    <a href={r.pdf_url} target="_blank" rel="noreferrer"
-                      className="flex-1 flex items-center justify-center gap-1 text-[10px] font-semibold bg-green-100 text-green-700 px-2 py-1.5 rounded-md hover:bg-green-200 transition">
-                      <ExternalLink size={10} />Open
-                    </a>
-                    <button onClick={() => handleUpdateLink(r.id, r.pdf_url)}
-                      className="text-[10px] text-gray-400 hover:text-gray-600 px-2">Edit</button>
-                  </div>
-                )}
+                <a href={r.pdf_url} target="_blank" rel="noreferrer"
+                  className="w-full flex items-center justify-center gap-1 text-[10px] font-semibold bg-teal-100 text-teal-700 px-2 py-1.5 rounded-md hover:bg-teal-200 transition">
+                  <ExternalLink size={10} />Open PDF
+                </a>
               </div>
             ))}
           </div>
@@ -435,7 +436,7 @@ export default function ResourceForm() {
                 <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
                   <CheckCircle2 size={12} className="text-green-600 shrink-0" />
                   <p className="text-xs text-green-700 font-medium">
-                    PDF downloaded! Upload it to Google Drive, then add the link from the list on the left.
+                    PDF uploaded and saved! Doctors and admins can now view it.
                   </p>
                 </div>
               )}

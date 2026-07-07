@@ -65,29 +65,19 @@ export default function AdminStaff() {
     const usersMap = {};
 
     (usersRes.data || []).forEach(user => {
-
       usersMap[user.id] = user;
-
     });
 
     const nursesWithUsers =
       (nursesRes.data || []).map(nurse => ({
-
         ...nurse,
-
-        users:
-          usersMap[nurse.user_id] || null
-
+        users: usersMap[nurse.user_id] || null
       }));
 
     const doctorsWithUsers =
       (doctorsRes.data || []).map(doc => ({
-
         ...doc,
-
-        users:
-          usersMap[doc.user_id] || null
-
+        users: usersMap[doc.user_id] || null
       }));
 
     setNurses(nursesWithUsers);

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../../superbase";
 import NurseProfileMenu from "../../components/NurseProfileMenu";
+import { useAuth } from "../../hooks/useAuth";
 
 const STATUS_COLORS = {
   Pending: "bg-gray-100 text-gray-600",
@@ -16,6 +17,7 @@ const STATUS_COLORS = {
 };
 
 export default function NurseDashboard() {
+  const { profile } = useAuth();
   const [visits, setVisits] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -48,25 +50,30 @@ export default function NurseDashboard() {
   const [saveSuccess, setSaveSuccess] = useState("");
 
   async function fetchAll() {
+    if (!profile?.id) return;
     const [vis, pending, inProg, completed] = await Promise.all([
       supabase.from("visits")
         .select(`id, status, start_time, end_time, created_at,
           care_requests(service_type, scheduled_date, location, duration,
             patients(name, patient_code, age, diagnosis, allergies, high_risk_flags)),
           nurses(name)`)
+        .eq("nurse_id", profile.id)
         .order("created_at", { ascending: false }),
-      supabase.from("visits").select("id", { count: "exact", head: true }).eq("status", "Pending"),
-      supabase.from("visits").select("id", { count: "exact", head: true }).eq("status", "InProgress"),
-      supabase.from("visits").select("id", { count: "exact", head: true }).eq("status", "Completed"),
+      supabase.from("visits").select("id", { count: "exact", head: true }).eq("status", "Pending").eq("nurse_id", profile.id),
+      supabase.from("visits").select("id", { count: "exact", head: true }).eq("status", "InProgress").eq("nurse_id", profile.id),
+      supabase.from("visits").select("id", { count: "exact", head: true }).eq("status", "Completed").eq("nurse_id", profile.id),
     ]);
+
     setVisits(vis.data || []);
     setStats({ pending: pending.count || 0, inProgress: inProg.count || 0, completed: completed.count || 0 });
   }
 
   useEffect(() => {
-    setLoading(true);
-    fetchAll().finally(() => setLoading(false));
-  }, []);
+    if (profile?.id) {
+      setLoading(true);
+      fetchAll().finally(() => setLoading(false));
+    }
+  }, [profile]);
 
   const handleStatusUpdate = async (visitId, newStatus) => {
     setUpdating(visitId);

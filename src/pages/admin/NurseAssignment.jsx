@@ -94,15 +94,35 @@ export default function NurseAssignment() {
       },
     ]);
 
-    // Update care_request status to Scheduled
+    // Also sync the actual 'visits' table for the dashboard
+    let visitError = null;
     if (!error) {
-      await supabase.from("care_requests")
-        .update({ status: "Scheduled" })
-        .eq("id", selectedRequest.id);
+      const { data: existingVisit } = await supabase.from("visits")
+        .select("id")
+        .eq("care_request_id", selectedRequest.id)
+        .maybeSingle();
+
+      if (existingVisit) {
+        const { error: err } = await supabase.from("visits").update({ nurse_id: form.primary_nurse_id }).eq("id", existingVisit.id);
+        visitError = err;
+      } else {
+        const { error: err } = await supabase.from("visits").insert({
+          care_request_id: selectedRequest.id,
+          nurse_id: form.primary_nurse_id,
+        });
+        visitError = err;
+      }
+
+      if (!visitError) {
+        await supabase.from("care_requests")
+          .update({ status: "Scheduled" })
+          .eq("id", selectedRequest.id);
+      }
     }
 
     setSubmitting(false);
     if (error) return setFormError("Failed to assign: " + error.message);
+    if (visitError) return setFormError("Failed to create visit record: " + visitError.message);
 
     setSuccess(true);
     setForm({ primary_nurse_id: "", standby_nurse_id: "" });
