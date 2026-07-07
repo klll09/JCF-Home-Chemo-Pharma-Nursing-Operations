@@ -399,7 +399,7 @@ export default function AdminDashboard() {
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1">Phone <span className="text-red-400">*</span></label>
                     <input type="tel" name="phone" value={form.phone} onChange={handleChange}
-                      placeholder="+91 98XXXXXXXX"
+                      placeholder="+91 98XXXXXXXX" maxLength={10}
                       className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-gray-300 bg-gray-50" />
                   </div>
                 </div>

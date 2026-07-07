@@ -10,6 +10,7 @@ const STATUS_COLORS = {
   Accepted: "bg-blue-100 text-blue-700",
   Packed: "bg-purple-100 text-purple-700",
   Dispatched: "bg-amber-100 text-amber-700",
+  OutForDelivery: "bg-orange-100 text-orange-700",
   Delivered: "bg-green-100 text-green-700",
 };
 
@@ -23,6 +24,7 @@ export default function MedicineRequisitions() {
   const [updating, setUpdating] = useState(null);
   const [formError, setFormError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
 
   const [form, setForm] = useState({
     care_request_id: "",
@@ -34,12 +36,13 @@ export default function MedicineRequisitions() {
   async function fetchAll() {
     const [reqs, careReqs, dists] = await Promise.all([
       supabase.from("medicine_requisitions")
-        .select(`id, status, delivery_deadline, dispatch_time, delivered_at, cold_chain_confirmation, created_at,
-          care_requests(service_type, scheduled_date, patients(name, patient_code)),
+        .select(`id, status, delivery_deadline, dispatch_time, out_for_delivery_at, delivered_at,accepted_at,
+packed_at, cold_chain_confirmation, created_at,
+          care_requests(service_type, scheduled_date, required_medicines, patients(name, patient_code)),
           distributors(name, contact_phone, service_area)`)
         .order("created_at", { ascending: false }),
       supabase.from("care_requests")
-        .select("id, service_type, scheduled_date, patients(name, patient_code)")
+        .select("id, service_type, scheduled_date, required_medicines, patients(name, patient_code)")
         .eq("medicine_required", true)
         .in("status", ["DoctorApproved", "Scheduled"]),
       supabase.from("distributors").select("id, name, contact_phone, service_area").order("name"),
@@ -48,7 +51,6 @@ export default function MedicineRequisitions() {
     setCareRequests(careReqs.data || []);
     setDistributors(dists.data || []);
   }
-
   useEffect(() => {
     setLoading(true);
     fetchAll().finally(() => setLoading(false));
@@ -60,33 +62,81 @@ export default function MedicineRequisitions() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.care_request_id) return setFormError("Please select a care request.");
-    if (!form.distributor_id) return setFormError("Please select a distributor.");
-    if (!form.delivery_deadline) return setFormError("Please set a delivery deadline.");
+  e.preventDefault();
 
-    setSubmitting(true);
-    const { error } = await supabase.from("medicine_requisitions").insert({
+  if (!form.care_request_id)
+    return setFormError("Please select a care request.");
+
+  if (!form.distributor_id)
+    return setFormError("Please select a distributor.");
+
+  if (!form.delivery_deadline)
+    return setFormError("Please set a delivery deadline.");
+
+  // Validate deadline <= nurse visit time - 2 hours
+  const req = careRequests.find(
+    r => String(r.id) === String(form.care_request_id)
+  );
+
+  if (req?.scheduled_date) {
+    const nurseTime = new Date(req.scheduled_date);
+
+    const maxDeadline = new Date(
+      nurseTime.getTime() - (2 * 60 * 60 * 1000)
+    );
+
+    if (new Date(form.delivery_deadline) > maxDeadline) {
+      return setFormError(
+        "Delivery deadline must be at least 2 hours before nurse visit."
+      );
+    }
+  }
+
+  setSubmitting(true);
+
+  const { error } = await supabase
+    .from("medicine_requisitions")
+    .insert({
       care_request_id: form.care_request_id,
       distributor_id: form.distributor_id,
       delivery_deadline: form.delivery_deadline,
       cold_chain_confirmation: form.cold_chain_confirmation,
       status: "RequisitionCreated",
     });
-    setSubmitting(false);
 
-    if (error) return setFormError("Failed to create: " + error.message);
+  setSubmitting(false);
 
-    setForm({ care_request_id: "", distributor_id: "", delivery_deadline: "", cold_chain_confirmation: "Not applicable" });
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
-    await fetchAll();
-  };
+  if (error) {
+    return setFormError(
+      "Failed to create: " + error.message
+    );
+  }
+
+  setForm({
+    care_request_id: "",
+    distributor_id: "",
+    delivery_deadline: "",
+    cold_chain_confirmation: "Not applicable",
+  });
+
+  setSelectedRequest(null);
+
+  setSuccess(true);
+
+  setTimeout(() => setSuccess(false), 3000);
+
+  await fetchAll();
+};
 
   const handleStatusUpdate = async (reqId, newStatus) => {
     setUpdating(reqId);
     const updateData = { status: newStatus };
+    if (newStatus === "Accepted")
+  updateData.accepted_at = new Date().toISOString();
+if (newStatus === "Packed")
+  updateData.packed_at = new Date().toISOString();
     if (newStatus === "Dispatched") updateData.dispatch_time = new Date().toISOString();
+    if (newStatus === "OutForDelivery") updateData.out_for_delivery_at = new Date().toISOString();
     if (newStatus === "Delivered") updateData.delivered_at = new Date().toISOString();
 
     await supabase.from("medicine_requisitions").update(updateData).eq("id", reqId);
@@ -95,7 +145,7 @@ export default function MedicineRequisitions() {
   };
 
   const getNextStatus = (current) => {
-    const flow = ["RequisitionCreated", "Accepted", "Packed", "Dispatched", "Delivered"];
+    const flow = ["RequisitionCreated", "Accepted", "Packed", "Dispatched", "OutForDelivery", "Delivered"];
     const idx = flow.indexOf(current);
     return idx < flow.length - 1 ? flow[idx + 1] : null;
   };
@@ -123,7 +173,7 @@ export default function MedicineRequisitions() {
           </div>
 
           <div className="grid grid-cols-12 px-5 py-2.5 bg-gray-50 border-b border-gray-100">
-            {["Patient", "Distributor", "Deadline", "Status", "Action", ""].map((h, i) => (
+            {["Patient", "Distributor", "Deadline", "Status", "Status Time", ""].map((h, i) => (
               <span key={i} className={`text-[10px] font-semibold text-gray-400 uppercase tracking-wider
                 ${i === 0 ? "col-span-3" : i === 1 ? "col-span-2" : i === 2 ? "col-span-2" : i === 3 ? "col-span-2" : i === 4 ? "col-span-2" : "col-span-1"}`}>
                 {h}
@@ -167,40 +217,121 @@ export default function MedicineRequisitions() {
                     {r.status}
                   </span>
                 </div>
-                <div className="col-span-2 flex items-center">
-                  {getNextStatus(r.status) && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleStatusUpdate(r.id, getNextStatus(r.status)); }}
-                      disabled={updating === r.id}
-                      className="text-[10px] font-semibold px-2 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded-md transition disabled:opacity-60">
-                      {updating === r.id ? "..." : `→ ${getNextStatus(r.status)}`}
-                    </button>
-                  )}
-                </div>
+                  <div className="col-span-2 flex items-center">
+    <p className="text-[10px] text-gray-500">
+      {r.status === "Delivered" && r.delivered_at
+        ? new Date(r.delivered_at).toLocaleString("en-IN")
+        : r.status === "OutForDelivery" && r.out_for_delivery_at
+        ? new Date(r.out_for_delivery_at).toLocaleString("en-IN")
+        : r.status === "Dispatched" && r.dispatch_time
+        ? new Date(r.dispatch_time).toLocaleString("en-IN")
+        : r.status === "Packed" && r.packed_at
+        ? new Date(r.packed_at).toLocaleString("en-IN")
+        : r.status === "Accepted" && r.accepted_at
+        ? new Date(r.accepted_at).toLocaleString("en-IN")
+        : new Date(r.created_at).toLocaleString("en-IN")}
+    </p>
+  </div>
                 <div className="col-span-1 flex items-center justify-center">
                   <ChevronRight size={13} className={`text-gray-300 transition-transform ${selected?.id === r.id ? "rotate-90 text-teal-500" : ""}`} />
                 </div>
 
-                {selected?.id === r.id && (
-                  <div className="col-span-12 mt-2 pt-3 border-t border-teal-100">
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="bg-white rounded-lg border border-teal-100 p-3">
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">Distributor Phone</p>
-                        <p className="text-xs text-gray-700">{r.distributors?.contact_phone || "—"}</p>
-                      </div>
-                      <div className="bg-white rounded-lg border border-teal-100 p-3">
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">Cold Chain</p>
-                        <p className="text-xs text-gray-700">{r.cold_chain_confirmation}</p>
-                      </div>
-                      <div className="bg-white rounded-lg border border-teal-100 p-3">
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">Dispatched At</p>
-                        <p className="text-xs text-gray-700">
-                          {r.dispatch_time ? new Date(r.dispatch_time).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+              {selected?.id === r.id && (
+  <div className="col-span-12 mt-2 pt-3 border-t border-teal-100">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+      {/* Required Medicines */}
+      <div className="bg-white rounded-lg border border-teal-100 p-3 md:col-span-3">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">
+          Required Medicines
+        </p>
+        <p className="text-xs text-gray-700 whitespace-pre-line">
+          {r.care_requests?.required_medicines || "Not Provided"}
+        </p>
+      </div>
+
+      {/* Distributor Info */}
+      <div className="bg-white rounded-lg border border-teal-100 p-3">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">
+          Distributor Phone
+        </p>
+        <p className="text-xs text-gray-700">
+          {r.distributors?.contact_phone || "—"}
+        </p>
+      </div>
+
+      <div className="bg-white rounded-lg border border-teal-100 p-3">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">
+          Cold Chain
+        </p>
+        <p className="text-xs text-gray-700">
+          {r.cold_chain_confirmation}
+        </p>
+      </div>
+
+      {/* Accepted */}
+      <div className="bg-white rounded-lg border border-teal-100 p-3">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">
+          Accepted At
+        </p>
+        <p className="text-xs text-gray-700">
+          {r.accepted_at
+            ? new Date(r.accepted_at).toLocaleString("en-IN")
+            : "—"}
+        </p>
+      </div>
+
+      {/* Packed */}
+      <div className="bg-white rounded-lg border border-teal-100 p-3">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">
+          Packed At
+        </p>
+        <p className="text-xs text-gray-700">
+          {r.packed_at
+            ? new Date(r.packed_at).toLocaleString("en-IN")
+            : "—"}
+        </p>
+      </div>
+
+      {/* Dispatched */}
+      <div className="bg-white rounded-lg border border-teal-100 p-3">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">
+          Dispatched At
+        </p>
+        <p className="text-xs text-gray-700">
+          {r.dispatch_time
+            ? new Date(r.dispatch_time).toLocaleString("en-IN")
+            : "—"}
+        </p>
+      </div>
+
+      {/* Out For Delivery */}
+      <div className="bg-white rounded-lg border border-teal-100 p-3">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">
+          Out For Delivery At
+        </p>
+        <p className="text-xs text-gray-700">
+          {r.out_for_delivery_at
+            ? new Date(r.out_for_delivery_at).toLocaleString("en-IN")
+            : "—"}
+        </p>
+      </div>
+
+      {/* Delivered */}
+      <div className="bg-white rounded-lg border border-teal-100 p-3">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">
+          Delivered At
+        </p>
+        <p className="text-xs text-gray-700">
+          {r.delivered_at
+            ? new Date(r.delivered_at).toLocaleString("en-IN")
+            : "—"}
+        </p>
+      </div>
+
+    </div>
+  </div>
+)}
               </div>
             ))}
           </div>
@@ -217,22 +348,74 @@ export default function MedicineRequisitions() {
             <form onSubmit={handleSubmit} className="flex flex-col gap-3.5" noValidate>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Care Request <span className="text-red-400">*</span>
-                </label>
-                <select name="care_request_id" value={form.care_request_id} onChange={handleChange}
-                  className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-gray-50 appearance-none">
-                  <option value="">Select care request</option>
-                  {careRequests.map(r => (
-                    <option key={r.id} value={r.id}>
-                      {r.patients?.name} — {r.service_type}
-                    </option>
-                  ))}
-                </select>
-                {careRequests.length === 0 && (
-                  <p className="text-[10px] text-amber-600 mt-1">No care requests with medicine required found.</p>
-                )}
-              </div>
+  <label className="block text-xs font-semibold text-gray-600 mb-1">
+    Care Request <span className="text-red-400">*</span>
+  </label>
+
+  <select
+    name="care_request_id"
+    value={form.care_request_id}
+    onChange={(e) => {
+      handleChange(e);
+
+      const req = careRequests.find(
+        r => String(r.id) === e.target.value
+      );
+
+      setSelectedRequest(req || null);
+      if (req?.scheduled_date) {
+  const nurseTime = new Date(req.scheduled_date);
+
+  nurseTime.setHours(
+    nurseTime.getHours() - 2
+  );
+
+  const local = new Date(
+    nurseTime.getTime() -
+    nurseTime.getTimezoneOffset() * 60000
+  )
+    .toISOString()
+    .slice(0, 16);
+
+  setForm(p => ({
+    ...p,
+    delivery_deadline: local
+  }));
+}
+      console.log("SELECTED", req);
+    }}
+    className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-gray-50 appearance-none"
+  >
+    <option value="">Select care request</option>
+
+    {careRequests.map(r => (
+      <option key={r.id} value={r.id}>
+        {r.patients?.name} — {r.service_type}
+      </option>
+    ))}
+  </select>
+
+  {careRequests.length === 0 && (
+    <p className="text-[10px] text-amber-600 mt-1">
+      No care requests with medicine required found.
+    </p>
+  )}
+</div>
+
+{selectedRequest && (
+  <div>
+    <label className="block text-xs font-semibold text-gray-600 mb-1">
+      Required Medicines
+    </label>
+
+    <textarea
+      readOnly
+      rows={5}
+      value={selectedRequest.required_medicines || ""}
+      className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 bg-gray-50"
+    />
+  </div>
+)}
 
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">
@@ -254,7 +437,20 @@ export default function MedicineRequisitions() {
                 <label className="block text-xs font-semibold text-gray-600 mb-1">
                   Delivery Deadline <span className="text-red-400">*</span>
                 </label>
-                <input type="datetime-local" name="delivery_deadline" value={form.delivery_deadline}
+                <input
+  type="datetime-local"
+  name="delivery_deadline"
+  value={form.delivery_deadline}
+  max={
+    selectedRequest?.scheduled_date
+      ? new Date(
+          new Date(selectedRequest.scheduled_date)
+            .getTime() - 2 * 60 * 60 * 1000
+        )
+          .toISOString()
+          .slice(0, 16)
+      : undefined
+  }
                   onChange={handleChange}
                   className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-gray-50" />
               </div>

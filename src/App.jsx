@@ -20,6 +20,10 @@ import DoctorCareRequests from './pages/doctor/CareRequests'
 import DoctorSummaries from './pages/doctor/Summaries'
 import DoctorPatients from './pages/doctor/Patients'
 import Settings from './pages/Settings'
+import DistributorDashboard from "./pages/distributors/Dashboard";
+import DistributorLayout from "./components/DistributorLayout";
+
+
 
 function RoleRedirect() {
   const { role, loading } = useAuth();
@@ -31,6 +35,7 @@ function RoleRedirect() {
   if (role === "Admin") return <Navigate to="/admin/dashboard" />;
   if (role === "Doctor") return <Navigate to="/doctor/dashboard" />;
   if (role === "Nurse") return <Navigate to="/nurse/dashboard" />;
+  if (role === "Distributor") return <Navigate to="/distributor/dashboard" />;
   return <Navigate to="/login" />;
 }
 
@@ -136,6 +141,27 @@ function App() {
             <NurseLayout><Settings /></NurseLayout>
           </ProtectedRoute>
         } />
+<Route
+  path="/distributor/dashboard"
+  element={
+    <ProtectedRoute allowedRoles={["Distributor"]}>
+      <DistributorLayout>
+        <DistributorDashboard />
+      </DistributorLayout>
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/distributor/settings"
+  element={
+    <ProtectedRoute allowedRoles={["Distributor"]}>
+      <DistributorLayout>
+        <Settings />
+      </DistributorLayout>
+    </ProtectedRoute>
+  }
+/>
+        
         
       </Routes>
     </Router>

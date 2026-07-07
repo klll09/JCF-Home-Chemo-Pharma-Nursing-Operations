@@ -538,7 +538,7 @@ export default function AdminStaff() {
                     <Phone size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     <input type="text" value={staffForm.phone}
                       onChange={(e) => setStaffForm({ ...staffForm, phone: e.target.value })}
-                      placeholder="+91 98XXXXXXXX"
+                      placeholder="+91 98XXXXXXXX" maxLength={10}
                       className={inputWithIconClass} />
                   </div>
                 </div>

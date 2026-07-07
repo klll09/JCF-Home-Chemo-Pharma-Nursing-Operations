@@ -35,7 +35,14 @@ export default function Settings() {
     setTimeout(() => setSuccess(false), 3000);
   };
 
-  const roleColor = role === "Admin" ? "teal" : role === "Doctor" ? "blue" : "purple";
+ const roleColor =
+  role === "Admin"
+    ? "teal"
+    : role === "Doctor"
+    ? "blue"
+    : role === "Distributor"
+    ? "orange"
+    : "purple";
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
