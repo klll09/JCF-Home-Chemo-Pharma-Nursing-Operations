@@ -4,7 +4,6 @@ import { useAuth } from "../hooks/useAuth";
 
 const NAV = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/nurse/dashboard" },
-  { icon: FileText, label: "Reports", path: "/nurse/reports" },
 ];
 
 export default function NurseSidebar() {

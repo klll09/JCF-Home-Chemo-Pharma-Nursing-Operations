@@ -15,7 +15,6 @@ import NurseDashboard from './pages/nurse/Dashboard'
 import Incidents from './pages/admin/Incidents'
 import Patients from './pages/admin/Patients'
 import Staff from './pages/admin/Staff'
-import ResourceForm from './pages/nurse/ResourceForm'
 import DoctorCareRequests from './pages/doctor/CareRequests'
 import DoctorSummaries from './pages/doctor/Summaries'
 import DoctorPatients from './pages/doctor/Patients'
@@ -132,11 +131,6 @@ function App() {
         <Route path="/nurse/dashboard" element={
           <ProtectedRoute allowedRoles={["Nurse"]}>
             <NurseLayout><NurseDashboard /></NurseLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/nurse/reports" element={
-          <ProtectedRoute allowedRoles={["Nurse"]}>
-            <NurseLayout><ResourceForm /></NurseLayout>
           </ProtectedRoute>
         } />
         <Route path="/nurse/settings" element={

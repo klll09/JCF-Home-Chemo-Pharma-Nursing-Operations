@@ -238,6 +238,36 @@ if (newStatus === "Packed")
 
               {selected?.id === r.id && (
   <div className="col-span-12 mt-2 pt-3 border-t border-teal-100">
+    {/* Delivery Progress Bar */}
+    <div className="px-4 py-3 mb-4 bg-gray-50 rounded-lg">
+      <p className="text-[10px] font-semibold text-gray-500 uppercase mb-3">Delivery Progress</p>
+      <div className="flex items-center justify-between relative">
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-200 rounded-full z-0"></div>
+        
+        {["RequisitionCreated", "Accepted", "Packed", "Dispatched", "OutForDelivery", "Delivered"].map((step, idx) => {
+          const flow = ["RequisitionCreated", "Accepted", "Packed", "Dispatched", "OutForDelivery", "Delivered"];
+          const currentIdx = flow.indexOf(r.status);
+          const isCompleted = idx <= currentIdx;
+          const isCurrent = idx === currentIdx;
+          
+          return (
+            <div key={step} className="relative z-10 flex flex-col items-center gap-1" style={{ width: '16%' }}>
+              <div className={`w-4 h-4 rounded-full border-2 ${
+                isCompleted ? 'bg-teal-500 border-teal-500' : 'bg-white border-gray-300'
+              } ${isCurrent ? 'ring-2 ring-teal-200 ring-offset-1' : ''}`}></div>
+              <p className={`text-[9px] font-medium text-center ${isCompleted ? 'text-teal-700' : 'text-gray-400'}`}>
+                {step.replace(/([A-Z])/g, ' $1').trim()}
+              </p>
+            </div>
+          );
+        })}
+        {/* Dynamic fill line */}
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-teal-500 rounded-full z-0 transition-all duration-500" 
+             style={{ width: `${(Math.max(0, ["RequisitionCreated", "Accepted", "Packed", "Dispatched", "OutForDelivery", "Delivered"].indexOf(r.status)) / 5) * 100}%` }}>
+        </div>
+      </div>
+    </div>
+
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 
       {/* Required Medicines */}
