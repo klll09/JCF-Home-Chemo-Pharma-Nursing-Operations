@@ -40,24 +40,33 @@ export default function DistributorDashboard() {
   const [actionError, setActionError] = useState("");
 
   async function fetchOrders() {
-    if (!profile?.id) return;
-    const { data, error } = await supabase
-      .from("medicine_requisitions")
-      .select(`id, status, delivery_deadline,
-  accepted_at,
-  packed_at,
-  dispatch_time,
-  out_for_delivery_at,
-  delivered_at,
-  cold_chain_confirmation,
-  created_at,
-        care_requests(service_type, scheduled_date, location, required_medicines,
-          patients(name, patient_code, address))`)
-      .eq("distributor_id", profile.id)
-      .order("created_at", { ascending: false });
+  if (!profile?.id) return;
 
-    if (!error) setOrders(data || []);
+  // First get the distributor record linked to this user
+  const { data: distData } = await supabase
+    .from("distributors")
+    .select("id")
+    .eq("user_id", profile.id)
+    .single();
+
+  // If no distributor record, just fetch all for now
+  const query = supabase
+    .from("medicine_requisitions")
+    .select(`id, status, delivery_deadline,
+      accepted_at, packed_at, dispatch_time,
+      out_for_delivery_at, delivered_at,
+      cold_chain_confirmation, created_at,
+      care_requests(service_type, scheduled_date, location, required_medicines,
+        patients(name, patient_code, address, phone))`)
+    .order("created_at", { ascending: false });
+
+  if (distData?.id) {
+    query.eq("distributor_id", distData.id);
   }
+
+  const { data, error } = await query;
+  if (!error) setOrders(data || []);
+}
 
   useEffect(() => {
     if (profile?.id) {

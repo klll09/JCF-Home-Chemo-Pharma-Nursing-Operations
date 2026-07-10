@@ -138,15 +138,15 @@ function App() {
             <NurseLayout><Settings /></NurseLayout>
           </ProtectedRoute>
         } />
-<Route
-  path="/distributor/dashboard"
-  element={
-    <ProtectedRoute allowedRoles={["Distributor"]}>
-      <DistributorLayout>
-        <DistributorDashboard />
-      </DistributorLayout>
-    </ProtectedRoute>
-  }
+        <Route
+          path="/distributor/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["Distributor"]}>
+              <DistributorLayout>
+                <DistributorDashboard />
+              </DistributorLayout>
+            </ProtectedRoute>
+          }
 />
 <Route
   path="/distributor/settings"
